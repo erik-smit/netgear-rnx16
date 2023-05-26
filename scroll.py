@@ -2,14 +2,7 @@ from readynas_oled import *
 import sys
 import time
 
-init_oled()
-
-output = " ".join(sys.argv[1:])
-
-for char in output:
-  oled_data_write(char)
-
-#start_scroll_right()
+cont_vert_scroll()
 
 # config = gpiod.line_request()
 # config.consumer = "Erik"

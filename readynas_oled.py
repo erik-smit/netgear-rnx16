@@ -33,10 +33,11 @@ for _name, gpio in gpios.items():
     gpio.request(consumer="erik", type=gpiod.LINE_REQ_DIR_OUT)
 
 def spi_send(c, cmd: bool):
+    # print(f'0x{c:02x}')
     gpios["cs"].set_value(0)
     gpios["dc"].set_value(0 if cmd else 1)
 
-    for bit in list(range(7,-1,-1)):
+    for bit in [7,6,5,4,3,2,1,0]:
         mask = 2**bit
         gpios["sclk"].set_value(0)
         gpios["sdin"].set_value(1 if (c & 2**bit) else 0)
@@ -57,7 +58,7 @@ def clear_oled(sleepy: bool = False):
     for page in range(0,4):
         gpios["cs"].set_value(0)
         gpios["dc"].set_value(0)
-        spi_send_cmd(0xb0 + page)
+        spi_send_cmd(SSD1306_B0_SET_PAGE_START + page)
         spi_send_cmd(0x10)
         spi_send_cmd(OLED_X_OFFSET)
         gpios["dc"].set_value(1)
@@ -161,6 +162,7 @@ font = {
     'q': [0x00,0x80,0x40,0x40,0x40,0x80,0x00,0x00,0x07,0x08,0x10,0x10,0x10,0xff,0x00,0x00],
     'r': [0x00,0xc0,0x80,0x40,0x40,0x40,0x00,0x00,0x00,0x3f,0x00,0x00,0x00,0x00,0x00,0x00],
     's': [0xc0,0x20,0x20,0x20,0x40,0x00,0x00,0x00,0x10,0x21,0x22,0x22,0x1c,0x00,0x00,0x00],
+    # 't': [0xff,0x40,0xf0,0x40,0x40,0x40,0x00,0x00,0x00,0x00,0x1f,0x20,0x20,0x20,0x00,0x00],
     't': [0x00,0x40,0xf0,0x40,0x40,0x40,0x00,0x00,0x00,0x00,0x1f,0x20,0x20,0x20,0x00,0x00],
     'u': [0xc0,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x0f,0x10,0x20,0x20,0x20,0x10,0x3f,0x00],
     'v': [0xc0,0x00,0x00,0x00,0x80,0x40,0x00,0x00,0x00,0x0f,0x30,0x1c,0x03,0x00,0x00,0x00],
@@ -182,25 +184,25 @@ def oled_data_write(c):
     xpix = oled_col * 8 + OLED_X_OFFSET
     page = 0
 
-    spi_send_cmd(0xa6)
-    spi_send_cmd(0x40) # Start line
+    spi_send_cmd(SSD1306_A6_NORMAL_DISPLAY)
+    spi_send_cmd(SSD1306_40_SET_START_LINE) # Start line
 
     # line1: page 0,1  line 2: page 2,3
     # one char takes 2 page 16 pbits height
-    for page in range(0,2):
+    for page in [0,1]:
         gpios["cs"].set_value(0)
         gpios["dc"].set_value(0)
 
-        spi_send_cmd(0xb0 + oled_row * 2 + page)
-        spi_send_cmd((xpix >> 4) | 0x10)
+        spi_send_cmd(SSD1306_B0_SET_PAGE_START + oled_row * 2 + page)
+        spi_send_cmd((xpix >> 4) | SSD1306_10_SET_HIGHER_COLUMN)
         spi_send_cmd( xpix & 0xf)
 
         gpios["dc"].set_value(1)
 
         for i in range(0, 8):
             raster = cg[page * 8 + i]
-            if (ord(c) != 0xff and (ord(c) & 0x80)):
-                raster ^= ~0
+            # if (ord(c) != 0xff and (ord(c) & 0x80)):
+            #     raster ^= ~0
             spi_send_data(raster)
 
     oled_shift_cursor(True)
@@ -222,73 +224,74 @@ def oled_shift_cursor(right: bool):
             oled_row = 0
 
 
-SSD1306_COMMAND = 0x00
-SSD1306_DATA = 0xC0
-SSD1306_DATA_CONTINUE = 0x40
+SSD1306_00_COMMAND = 0x00
+SSD1306_C0_DATA = 0xC0
+SSD1306_40_DATA_CONTINUE = 0x40
 
-SSD1306_SET_CONTRAST_CONTROL = 0x81
-SSD1306_DISPLAY_ALL_ON_RESUME = 0xA4
-SSD1306_DISPLAY_ALL_ON = 0xA5
-SSD1306_NORMAL_DISPLAY = 0xA6
-SSD1306_INVERT_DISPLAY = 0xA7
-SSD1306_DISPLAY_OFF = 0xAE
-SSD1306_DISPLAY_ON = 0xAF
-SSD1306_NOP = 0xE3
-SSD1306_HORIZONTAL_SCROLL_RIGHT = 0x26
-SSD1306_HORIZONTAL_SCROLL_LEFT = 0x27
-SSD1306_HORIZONTAL_SCROLL_VERTICAL_AND_RIGHT = 0x29
-SSD1306_HORIZONTAL_SCROLL_VERTICAL_AND_LEFT = 0x2A
-SSD1306_DEACTIVATE_SCROLL = 0x2E
-SSD1306_ACTIVATE_SCROLL = 0x2F
-SSD1306_SET_VERTICAL_SCROLL_AREA = 0xA3
-SSD1306_SET_LOWER_COLUMN = 0x00
-SSD1306_SET_HIGHER_COLUMN = 0x10
-SSD1306_MEMORY_ADDR_MODE = 0x20
-SSD1306_SET_COLUMN_ADDR = 0x21
-SSD1306_SET_PAGE_ADDR = 0x22
-SSD1306_SET_START_LINE = 0x40
-SSD1306_SET_SEGMENT_REMAP = 0xA0
-SSD1306_SET_MULTIPLEX_RATIO = 0xA8
-SSD1306_COM_SCAN_DIR_INC = 0xC0
-SSD1306_COM_SCAN_DIR_DEC = 0xC8
-SSD1306_SET_DISPLAY_OFFSET = 0xD3
-SSD1306_SET_COM_PINS = 0xDA
-SSD1306_CHARGE_PUMP = 0x8D
-SSD1306_SET_DISPLAY_CLOCK_DIV_RATIO = 0xD5
-SSD1306_SET_PRECHARGE_PERIOD = 0xD9
-SSD1306_SET_VCOM_DESELECT = 0xDB
+SSD1306_81_SET_CONTRAST_CONTROL = 0x81
+SSD1306_A4_DISPLAY_ALL_ON_RESUME = 0xA4
+SSD1306_A5_DISPLAY_ALL_ON = 0xA5
+SSD1306_A6_NORMAL_DISPLAY = 0xA6
+SSD1306_A7_INVERT_DISPLAY = 0xA7
+SSD1306_AE_DISPLAY_OFF = 0xAE
+SSD1306_AF_DISPLAY_ON = 0xAF
+SSD1306_E3_NOP = 0xE3
+SSD1306_26_HORIZONTAL_SCROLL_RIGHT = 0x26
+SSD1306_27_HORIZONTAL_SCROLL_LEFT = 0x27
+SSD1306_29_HORIZONTAL_SCROLL_VERTICAL_AND_RIGHT = 0x29
+SSD1306_2A_HORIZONTAL_SCROLL_VERTICAL_AND_LEFT = 0x2A
+SSD1306_2E_DEACTIVATE_SCROLL = 0x2E
+SSD1306_2F_ACTIVATE_SCROLL = 0x2F
+SSD1306_A3_SET_VERTICAL_SCROLL_AREA = 0xA3
+SSD1306_00_SET_LOWER_COLUMN = 0x00
+SSD1306_10_SET_HIGHER_COLUMN = 0x10
+SSD1306_20_MEMORY_ADDR_MODE = 0x20
+SSD1306_21_SET_COLUMN_ADDR = 0x21
+SSD1306_22_SET_PAGE_ADDR = 0x22
+SSD1306_40_SET_START_LINE = 0x40
+SSD1306_A0_SET_SEGMENT_REMAP = 0xA0
+SSD1306_A8_SET_MULTIPLEX_RATIO = 0xA8
+SSD1306_B0_SET_PAGE_START = 0xB0
+SSD1306_C0_COM_SCAN_DIR_INC = 0xC0
+SSD1306_C8_COM_SCAN_DIR_DEC = 0xC8
+SSD1306_D3_SET_DISPLAY_OFFSET = 0xD3
+SSD1306_DA_SET_COM_PINS = 0xDA
+SSD1306_8D_CHARGE_PUMP = 0x8D
+SSD1306_D5_SET_DISPLAY_CLOCK_DIV_RATIO = 0xD5
+SSD1306_D9_SET_PRECHARGE_PERIOD = 0xD9
+SSD1306_DB_SET_VCOM_DESELECT = 0xDB
 
 
 def init_oled():
     oled_init_cmd = [
-                SSD1306_DISPLAY_OFF,   # Turn off display. */
-                SSD1306_SET_DISPLAY_CLOCK_DIV_RATIO,   # Display ClocDivide Ratio/Oscillator Frequency */
+                SSD1306_AE_DISPLAY_OFF,   # Turn off display. */
+                SSD1306_D5_SET_DISPLAY_CLOCK_DIV_RATIO,   # Display ClocDivide Ratio/Oscillator Frequency */
                 0x71,   # to 105Hz. */
-                SSD1306_SET_MULTIPLEX_RATIO,   # Multiplex Ratio */
+                SSD1306_A8_SET_MULTIPLEX_RATIO,   # Multiplex Ratio */
                 0x1f,   # to 32mux. */
-                SSD1306_SET_PRECHARGE_PERIOD,   # Precharge period. */
-                SSD1306_MEMORY_ADDR_MODE,   # Memory addressing mode. */
+                SSD1306_D9_SET_PRECHARGE_PERIOD,   # Precharge period. */
+                SSD1306_20_MEMORY_ADDR_MODE,   # Memory addressing mode. */
                 0xa1,   # Seg re-map 127->0. */
-                SSD1306_COM_SCAN_DIR_DEC,   # COM scan direction COM(N-1)-->COM0. */
-                SSD1306_SET_COM_PINS,   # COM pins hardware configuration. */
+                SSD1306_C8_COM_SCAN_DIR_DEC,   # COM scan direction COM(N-1)-->COM0. */
+                SSD1306_DA_SET_COM_PINS,   # COM pins hardware configuration. */
                 0xd8,   # Color_mode_set */
                 0x00,   # to monochrome mode & normal power mode. */
-                SSD1306_SET_CONTRAST_CONTROL,   # Contrast control. */
-                0xb0,   # Page start address for page Addressing mode. */
-                SSD1306_SET_DISPLAY_OFFSET,   # Display offset. */
+                SSD1306_81_SET_CONTRAST_CONTROL,   # Contrast control. */
+                SSD1306_B0_SET_PAGE_START,   # Page start address for page Addressing mode. */
+                SSD1306_D3_SET_DISPLAY_OFFSET,   # Display offset. */
                 0x00,
-                SSD1306_SET_COLUMN_ADDR,   # Column address. */
+                SSD1306_21_SET_COLUMN_ADDR,   # Column address. */
                 OLED_X_OFFSET,          # Colum address start. */
                 0x7f+OLED_X_OFFSET,     # Colum address end. */
-                SSD1306_SET_PAGE_ADDR,   # Page address. */
+                SSD1306_22_SET_PAGE_ADDR,   # Page address. */
                 0x00,   # Page address start. */
                 0x03,   # Page address end. */
-                SSD1306_SET_HIGHER_COLUMN,   # Higher column start addr for page addressing mode. */
-                SSD1306_SET_LOWER_COLUMN,   # Lower column start addr for page addressing mode. */
-                SSD1306_SET_START_LINE,   # Display start line */
-                SSD1306_NORMAL_DISPLAY,   # Normal (non-inverted). */
-                SSD1306_DISPLAY_ALL_ON_RESUME,   # Entire display Off. */
-                SSD1306_SET_VCOM_DESELECT,   # VCOMH Level */
+                SSD1306_10_SET_HIGHER_COLUMN,   # Higher column start addr for page addressing mode. */
+                SSD1306_00_SET_LOWER_COLUMN,   # Lower column start addr for page addressing mode. */
+                SSD1306_40_SET_START_LINE,   # Display start line */
+                SSD1306_A6_NORMAL_DISPLAY,   # Normal (non-inverted). */
+                SSD1306_A4_DISPLAY_ALL_ON_RESUME,   # Entire display Off. */
+                SSD1306_DB_SET_VCOM_DESELECT,   # VCOMH Level */
                 0x18,   # to 0.83*VCC 0x3c, change from 0x20 to 0x18 avoid power peek issue. */        
     ]
 
@@ -305,23 +308,42 @@ def init_oled():
 
     oled_backlight_on(True)
 
-def start_scroll_right():
+def cont_vert_scroll():
     oled_scroll_cmd = [
-        SSD1306_HORIZONTAL_SCROLL_VERTICAL_AND_RIGHT,
+        SSD1306_29_HORIZONTAL_SCROLL_VERTICAL_AND_RIGHT,
         0x00, # dummy
         0x00, # start page
         0x00, # time interval
-        0x03, # page f end
+        0x01, # page f end
 
         0x01, # vertical scrolling
 #        0xff,
-        SSD1306_ACTIVATE_SCROLL
+        SSD1306_2F_ACTIVATE_SCROLL
     ]
 
     for cmd in oled_scroll_cmd:
         spi_send_cmd(cmd)
 
+def horizontal_scroll():
+    oled_scroll_cmd = [
+        SSD1306_26_HORIZONTAL_SCROLL_RIGHT,
+        0x00, # dummy
+        0x00, # start page
+        0x06, # time interval
+        0x07, # page end
+        0x00, # dummy
+        0xff, # dummy
+        SSD1306_2F_ACTIVATE_SCROLL
+    ]
 
+    for cmd in oled_scroll_cmd:
+        spi_send_cmd(cmd)
+
+def reset_oled():
+    gpios["reset"].set_value(0)
+    time.sleep(0.1) # L pulse > 3us
+    gpios["reset"].set_value(1)
+    time.sleep(0.1)
 
 def oled_backlight_on(on: bool):
     spi_send_cmd(0xaf if on else 0xae)
