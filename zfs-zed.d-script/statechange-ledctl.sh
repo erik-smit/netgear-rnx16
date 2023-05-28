@@ -76,6 +76,8 @@ state_to_val()
 	esac
 }
 
+# UNTESTED
+#
 # process_pool (pool)
 #
 # Iterate through a pool and set the vdevs' enclosure slot LEDs to
@@ -148,7 +150,7 @@ if [ -n "$ZEVENT_VDEV_PATH" ] && [ -n "$ZEVENT_VDEV_STATE_STR" ] ; then
 	vdev=$(path_to_dev "$ZEVENT_VDEV_PATH")
 	set_led "$vdev" "$val"
 else
-	# Process the entire pool
+	# UNTESTED: Process the entire pool
 	poolname=$(zed_guid_to_pool "$ZEVENT_POOL_GUID")
 	process_pool "$poolname"
 fi
