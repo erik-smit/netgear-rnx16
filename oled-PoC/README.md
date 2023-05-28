@@ -18,4 +18,4 @@ root@eriknas:~/rnx416/oled-PoC#
 ```
 
 # Example
-![Alt text](oled-PoC/rnx16-oled-small.jpg?raw=true "rnx16 frontpanel oled")
+![Alt text](rnx16-oled-small.jpg?raw=true "rnx16 frontpanel oled")
