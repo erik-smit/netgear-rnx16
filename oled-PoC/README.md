@@ -14,7 +14,7 @@ Needed to add `acpi_enforce_resources=lax` to kernel
 # Usage
 ```
 # python3 test.py "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
-root@eriknas:~/rnx416/oled-PoC#
+#
 ```
 
 # Example
