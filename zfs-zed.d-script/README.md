@@ -2,6 +2,7 @@
 
 # Usage
 `statechange-ledctl.sh` goes into /etc/zfs/zfs.d  
+Don't forget to `HUP` `zed`  
 Tested on Proxmox 7.4-3
 
 # Testing
